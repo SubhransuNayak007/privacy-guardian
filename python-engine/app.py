@@ -1,49 +1,47 @@
 import time
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+import asyncio
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 import psutil
 
 from models.manager import ModelManager
-from pipeline import execute_pipeline
+from workers.queue import queue_manager
 
 app = FastAPI(title="Privacy Guardian v2.1")
 
 class ScanRequest(BaseModel):
     imageBase64: str
 
-job_results = {}
+@app.on_event("startup")
+async def startup_event():
+    # Force manager initialization before serving
+    ModelManager()
+    # Start the async workers
+    queue_manager.start_workers()
 
 def get_model_manager():
     return ModelManager()
 
-def process_job(job_id: str, b64_str: str):
-    try:
-        b64_out, dets, ptime = execute_pipeline(b64_str)
-        job_results[job_id] = {
-            "status": "completed",
-            "image": b64_out,
-            "detections": dets,
-            "processing_time": ptime
-        }
-    except Exception as e:
-        job_results[job_id] = {"status": "error", "message": str(e)}
-
 @app.post("/scan")
-async def scan(req: ScanRequest, background_tasks: BackgroundTasks):
+async def scan(req: ScanRequest):
     job_id = "job_" + str(int(time.time() * 1000))
-    job_results[job_id] = {"status": "processing"}
-    background_tasks.add_task(process_job, job_id, req.imageBase64)
-    return {"job_id": job_id, "status": "processing"}
+    await queue_manager.add_job(job_id, req.imageBase64)
+    return {"job_id": job_id, "status": "queued"}
 
 @app.get("/result/{job_id}")
 async def get_result(job_id: str):
-    if job_id not in job_results:
-        raise HTTPException(status_code=404)
-    return job_results[job_id]
+    res = queue_manager.get_result(job_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return res
 
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+@app.get("/status")
+async def status():
+    return {"status": "running", "uptime_info": "ok"}
 
 @app.get("/models")
 async def models_status(manager: ModelManager = Depends(get_model_manager)):
@@ -54,11 +52,10 @@ async def metrics():
     return {
         "ram_usage_percent": psutil.virtual_memory().percent,
         "cpu_usage_percent": psutil.cpu_percent(),
-        "active_jobs": len([j for j in job_results.values() if j["status"] == "processing"])
+        "queue_depth": queue_manager.get_queue_depth(),
+        "active_jobs": len([j for j in queue_manager.results.values() if j["status"] in ["queued", "processing"]])
     }
 
 if __name__ == "__main__":
     import uvicorn
-    # Force manager initialization before serving
-    ModelManager()
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)

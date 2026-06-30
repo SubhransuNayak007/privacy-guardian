@@ -50,11 +50,21 @@ class ModelManager:
     def get_vlm(self):
         if self._vlm is None:
             try:
-                # Placeholder for Florence-2 loading
-                self._vlm = "florence_mock" 
+                import torch
+                from transformers import AutoProcessor, AutoModelForCausalLM
+                
+                model_name = self.registry.get_vlm_model()
+                # microsoft/Florence-2-base
+                processor = AutoProcessor.from_pretrained(f"microsoft/{model_name}", trust_remote_code=True)
+                model = AutoModelForCausalLM.from_pretrained(f"microsoft/{model_name}", trust_remote_code=True)
+                
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                model.to(device)
+                
+                self._vlm = {"model": model, "processor": processor, "device": device}
             except Exception as e:
-                print(f"Error loading VLM: {e}")
-                self._vlm = "unavailable"
+                print(f"Error loading Florence-2 VLM (Falling back to mock): {e}")
+                self._vlm = "florence_mock"
         return self._vlm
         
     def get_status(self):
