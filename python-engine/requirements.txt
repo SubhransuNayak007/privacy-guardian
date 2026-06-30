@@ -26,3 +26,10 @@ pyzbar
 # Extras
 einops
 timm
+
+# Hybrid Pipeline Additions
+ensemble-boxes
+presidio-analyzer
+presidio-anonymizer
+openai
+marker-pdf

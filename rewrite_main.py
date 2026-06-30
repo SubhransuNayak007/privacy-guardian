@@ -1,4 +1,9 @@
-import base64
+import os
+
+def rewrite_main():
+    path = r"D:\rot post\privacy-guardian\python-engine\main.py"
+    
+    new_content = """import base64
 import re
 import time
 import uuid as _uuid
@@ -395,9 +400,9 @@ async def scan_endpoint(req: ScanRequest):
             
             is_pii = False
             # Regex
-            if re.search(r'\b\d{4}\s?\d{4}\s?\d{4}\b', txt): # Aadhaar
+            if re.search(r'\\b\\d{4}\\s?\\d{4}\\s?\\d{4}\\b', txt): # Aadhaar
                 is_pii = True
-            elif re.search(r'\b[A-Z]{5}\d{4}[A-Z]\b', txt): # PAN
+            elif re.search(r'\\b[A-Z]{5}\\d{4}[A-Z]\\b', txt): # PAN
                 is_pii = True
                 
             # Presidio
@@ -457,3 +462,10 @@ async def scan_endpoint(req: ScanRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+"""
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    print("Rewritten main.py successfully with Hybrid Pipeline!")
+
+if __name__ == "__main__":
+    rewrite_main()
