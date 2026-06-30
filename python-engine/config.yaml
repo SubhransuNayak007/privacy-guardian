@@ -1,0 +1,16 @@
+# Privacy Guardian v2.1 Model Registry Config
+detector:
+  model: yolov8n
+  conf_threshold: 0.3
+
+ocr:
+  model: paddle
+
+vlm:
+  model: florence2-base
+
+segmentation:
+  model: fastsam
+
+pii:
+  presidio_lang: en

@@ -33,3 +33,5 @@ presidio-analyzer
 presidio-anonymizer
 openai
 marker-pdf
+
+pyyaml
