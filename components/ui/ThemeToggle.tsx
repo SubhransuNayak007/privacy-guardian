@@ -51,14 +51,12 @@ export function ThemeToggle() {
 
       document.documentElement.animate(
         {
-          clipPath: isDark ? [...clipPath].reverse() : clipPath,
+          clipPath: clipPath,
         },
         {
-          duration: 700,
-          easing: "cubic-bezier(0.85, 0, 0.15, 1)",
-          pseudoElement: isDark
-            ? "::view-transition-old(root)"
-            : "::view-transition-new(root)",
+          duration: 400,
+          easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+          pseudoElement: "::view-transition-new(root)",
         }
       );
     });

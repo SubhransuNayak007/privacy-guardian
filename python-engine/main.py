@@ -1105,83 +1105,107 @@ async def scan(req: ScanRequest):
         raise HTTPException(400, f"Image decode error: {e}")
 
     try:
-        # -- CONCURRENT MODEL EXECUTION --------------------------------------------
+        # -- 4-WAY TILING ENGINE ----------------------------------------------------
         import concurrent.futures
-        t_ocr = time.time()
+        t_start = time.time()
         
-        # Preprocess for OCR: CLAHE for contrast enhancement
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        img_enhanced = cv2.cvtColor(clahe.apply(gray), cv2.COLOR_GRAY2BGR)
+        # Split image into 4 exact quadrants
+        mid_y, mid_x = H // 2, W // 2
+        patches = [
+            (img[0:mid_y, 0:mid_x], 0, 0, mid_x, mid_y),            # TL
+            (img[0:mid_y, mid_x:W], mid_x, 0, W - mid_x, mid_y),    # TR
+            (img[mid_y:H, 0:mid_x], 0, mid_y, mid_x, H - mid_y),    # BL
+            (img[mid_y:H, mid_x:W], mid_x, mid_y, W - mid_x, H - mid_y) # BR
+        ]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            fut_ocr = executor.submit(run_ocr, img_enhanced)
-            fut_face = executor.submit(run_faces, img, W, H)
-            fut_qr = executor.submit(run_qr, img, W, H)
-            fut_yolo = executor.submit(run_yolo, img, W, H)
-            fut_nsfw = executor.submit(run_nudenet, img, W, H)
-            fut_alpr = executor.submit(run_alpr, img, W, H)
+        def process_patch(patch_data):
+            patch_img, off_x_px, off_y_px, pW, pH = patch_data
+            
+            # Preprocess for OCR
+            gray = cv2.cvtColor(patch_img, cv2.COLOR_BGR2GRAY)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            img_enhanced = cv2.cvtColor(clahe.apply(gray), cv2.COLOR_GRAY2BGR)
 
-            lines = fut_ocr.result()
-            face_d = fut_face.result()
-            qr_d = fut_qr.result()
-            yolo_d = fut_yolo.result()
-            nsfw_d = fut_nsfw.result()
-            alpr_d = fut_alpr.result()
+            # Sequential processing per patch to avoid thread chaos
+            lines = run_ocr(img_enhanced)
+            face_d = run_faces(patch_img, pW, pH)
+            qr_d = run_qr(patch_img, pW, pH)
+            yolo_d = run_yolo(patch_img, pW, pH)
+            nsfw_d = run_nudenet(patch_img, pW, pH)
+            alpr_d = run_alpr(patch_img, pW, pH)
 
-        ocr_ms = int((time.time() - t_ocr) * 1000)
-        full_text = " ".join(str(ln[1][0]) for ln in lines if ln[1][0])
-        diagnostics["OCR"] = f"✓ {len(lines)} lines, {len(full_text)} chars" if lines else "X 0 lines"
+            regex_d = run_regex(lines, pW, pH)
+            for ap in alpr_d:
+                if not any(iou(ap.bbox, rd.bbox) > 0.4 for rd in regex_d if rd.type == "license_plate"):
+                    regex_d.append(ap)
+                    
+            addr_d = run_address_name(lines, pW, pH)
+            ft_d = run_fulltext_scan(lines, pW, pH)
+            sig_d = run_signatures(patch_img, pW, pH, lines)
+            doc_d = run_doc_classifier(lines, pW, pH)
 
-        # YOLO person detections: only add if no InsightFace/Haar face overlaps
-        yolo_persons = [d for d in yolo_d if d.type == "face"]
-        yolo_others  = [d for d in yolo_d if d.type != "face"]
-        for yp in yolo_persons:
-            if not any(iou(yp.bbox, fd.bbox) > 0.3 for fd in face_d):
-                face_d.append(yp)
+            yolo_persons = [d for d in yolo_d if d.type == "face"]
+            yolo_others  = [d for d in yolo_d if d.type != "face"]
+            for yp in yolo_persons:
+                if not any(iou(yp.bbox, fd.bbox) > 0.3 for fd in face_d):
+                    face_d.append(yp)
 
-        diagnostics["YOLO"] = f"✓ {len(yolo_d)} objects" if yolo_d else "X 0 objects"
-        diagnostics["Faces"] = f"✓ {len(face_d)} faces" if face_d else "X 0 faces"
-        diagnostics["Barcode/QR"] = f"✓ {len(qr_d)} codes" if qr_d else "X 0 codes"
-        diagnostics["NSFW"] = f"✓ {len(nsfw_d)} regions" if nsfw_d else "X 0 regions"
-        
-        # -- TEXT-DEPENDENT LAYERS ------------------------------------------------
-        regex_d = run_regex(lines, W, H)
-        diagnostics["Regex"] = f"✓ {len(regex_d)} matches" if regex_d else "X 0 matches"
-        
-        # Merge ALPR plates with regex-detected plates (deduplicate by IoU)
-        for ap in alpr_d:
-            if not any(iou(ap.bbox, rd.bbox) > 0.4 for rd in regex_d if rd.type == "license_plate"):
-                regex_d.append(ap)
-        diagnostics["ALPR"] = f"✓ {len(alpr_d)} plates" if alpr_d else "X 0 plates"
-    
-        addr_d = run_address_name(lines, W, H)
-        diagnostics["Address"] = f"✓ {len(addr_d)} blocks" if addr_d else "X 0 blocks"
-    
-        ft_d = run_fulltext_scan(lines, W, H)
-        diagnostics["FullText"] = f"✓ {len(ft_d)} matches" if ft_d else "X 0 matches"
-    
-        sig_d = run_signatures(img, W, H, lines)
-        diagnostics["Signatures"] = f"✓ {len(sig_d)} signatures" if sig_d else "X 0 signatures"
-    
-        doc_d = run_doc_classifier(lines, W, H)
-        diagnostics["Documents"] = f"✓ {len(doc_d)} doc types" if doc_d else "X 0 doc types"
-    
-        # -- Merge & NMS -----------------------------------------------------------
-        all_dets = regex_d + addr_d + ft_d + face_d + qr_d + yolo_others + sig_d + doc_d + nsfw_d
-    
-        # Priority 1: NSFW always force-redact (already set in run_nudenet)
-        # Priority 2: Weapons always redact
-        for d in all_dets:
-            if d.confidence >= 70.0:
-                d.redacted = True
-            if d.type in ("weapon", "nsfw"):
-                d.redacted = True
-    
-        # NMS by category groups
+            patch_dets = regex_d + addr_d + ft_d + face_d + qr_d + yolo_others + sig_d + doc_d + nsfw_d
+            
+            # Convert patch percentage coordinates to global percentage coordinates
+            scale_x = pW / W
+            scale_y = pH / H
+            off_x_pct = (off_x_px / W) * 100.0
+            off_y_pct = (off_y_px / H) * 100.0
+            
+            for d in patch_dets:
+                d.bbox.x0 = d.bbox.x0 * scale_x + off_x_pct
+                d.bbox.x1 = d.bbox.x1 * scale_x + off_x_pct
+                d.bbox.y0 = d.bbox.y0 * scale_y + off_y_pct
+                d.bbox.y1 = d.bbox.y1 * scale_y + off_y_pct
+                if d.confidence >= 70.0 or d.type in ("weapon", "nsfw"):
+                    d.redacted = True
+
+            patch_words = []
+            for ln in lines:
+                box, (t, c) = ln
+                try:
+                    xs = [float(p[0]) for p in box]
+                    ys = [float(p[1]) for p in box]
+                    x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+                    
+                    x0_pct = max(0.0, min(100.0, (x0 / pW) * 100.0)) * scale_x + off_x_pct
+                    x1_pct = max(0.0, min(100.0, (x1 / pW) * 100.0)) * scale_x + off_x_pct
+                    y0_pct = max(0.0, min(100.0, (y0 / pH) * 100.0)) * scale_y + off_y_pct
+                    y1_pct = max(0.0, min(100.0, (y1 / pH) * 100.0)) * scale_y + off_y_pct
+                    
+                    patch_words.append(OCRWord(
+                        text=str(t), confidence=float(c),
+                        bbox=BoundingBox(x0=x0_pct, y0=y0_pct, x1=x1_pct, y1=y1_pct)
+                    ))
+                except:
+                    pass
+                    
+            return patch_dets, patch_words, lines
+
+        all_dets = []
+        words_out = []
+        total_lines = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(process_patch, patches))
+            
+        for pdets, pwords, plines in results:
+            all_dets.extend(pdets)
+            words_out.extend(pwords)
+            total_lines.extend(plines)
+            
+        full_text = " ".join(str(ln[1][0]) for ln in total_lines if ln[1][0])
+        ocr_ms = int((time.time() - t_start) * 1000)
+
+        # -- Merge & NMS Global ----------------------------------------------------
         face_dets   = [d for d in all_dets if d.type == "face"]
         weapon_dets = [d for d in all_dets if d.type == "weapon"]
-        nsfw_dets   = [d for d in all_dets if d.type == "nsfw"]   # never suppressed
+        nsfw_dets   = [d for d in all_dets if d.type == "nsfw"]
         text_dets   = [d for d in all_dets if d.type not in ("face", "weapon", "nsfw")]
     
         merged = (
@@ -1191,7 +1215,6 @@ async def scan(req: ScanRequest):
             + nms(text_dets, thr=0.7)
         )
     
-        # Remove zero-area boxes and context-only vehicle boxes
         merged = [
             d for d in merged
             if (d.bbox.x1 - d.bbox.x0) > 0
@@ -1200,12 +1223,13 @@ async def scan(req: ScanRequest):
         ]
     
         diagnostics["Final"] = f"✓ {len(merged)} total detections"
+        diagnostics["Tiling"] = "Active (4 Quadrants)"
     
         # -- Privacy Score ---------------------------------------------------------
         base_score = 100
         for d in merged:
             if d.type == "nsfw":
-                base_score -= 35   # NSFW is highest risk
+                base_score -= 35
             elif d.type in ("face", "aadhaar", "pan"):
                 base_score -= 20
             elif d.type in ("phone", "email"):
@@ -1224,22 +1248,6 @@ async def scan(req: ScanRequest):
                 base_score -= 5
         privacy_score = max(0, min(100, base_score))
     
-        # -- Build OCR Words -------------------------------------------------------
-        words_out = []
-        for ln in lines:
-            box, (t, c) = ln
-            try:
-                xs = [float(p[0]) for p in box]
-                ys = [float(p[1]) for p in box]
-                x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
-                def pct(v, dim): return float(max(0.0, min(100.0, (v / dim) * 100.0)))
-                words_out.append(OCRWord(
-                    text=str(t), confidence=float(c),
-                    bbox=BoundingBox(x0=pct(x0, W), y0=pct(y0, H), x1=pct(x1, W), y1=pct(y1, H))
-                ))
-            except Exception:
-                pass
-    
         # -- Metrics ---------------------------------------------------------------
         ms = int((time.time() - t0) * 1000)
         total_area = W * H
@@ -1257,13 +1265,7 @@ async def scan(req: ScanRequest):
             memory_usage_mb=round(mem_mb, 2)
         )
     
-        print(
-            f"[Scan] DONE {ms}ms | {W}x{H} | "
-            f"ocr={len(lines)} regex={len(regex_d)} addr={len(addr_d)} ft={len(ft_d)} "
-            f"face={len(face_d)} qr={len(qr_d)} yolo={len(yolo_d)} "
-            f"nsfw={len(nsfw_d)} alpr={alpr_plates} sig={len(sig_d)} doc={len(doc_d)} "
-            f"-> merged={len(merged)} | privacy={privacy_score}"
-        )
+        print(f"[Scan] 4-WAY DONE {ms}ms | {W}x{H} | merged={len(merged)} | privacy={privacy_score}")
     
         return ScanResponse(
             detections=merged,

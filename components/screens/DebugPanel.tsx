@@ -13,7 +13,7 @@ export default function DebugPanel() {
   if (!currentScan) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 flex flex-col items-start font-mono text-xs max-w-sm w-full shadow-2xl">
+    <div className="fixed bottom-24 md:bottom-4 left-4 z-50 flex flex-col items-start font-mono text-xs max-w-sm w-[calc(100vw-32px)] md:w-full shadow-2xl pointer-events-auto">
       {isOpen && (
         <div className="bg-surface-elevated text-success p-4 rounded-t-lg w-full h-96 overflow-y-auto border border-border">
           <div className="flex justify-between items-center mb-4 border-b border-border pb-2">

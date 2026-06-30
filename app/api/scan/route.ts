@@ -4,6 +4,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import path from 'path';
 
+export const maxDuration = 60;
+
 // Initialize Google Cloud Vision client lazily (avoids module-load crash when
 // GOOGLE_APPLICATION_CREDENTIALS is missing — it fails at call-time instead,
 // allowing the Tesseract fallback to run).
@@ -97,10 +99,6 @@ export async function POST(req: Request) {
           y = d.bbox.y0 ?? d.bbox.y ?? 0;
           w = d.bbox.width ?? (d.bbox.x1 ? d.bbox.x1 - x : 0);
           h = d.bbox.height ?? (d.bbox.y1 ? d.bbox.y1 - y : 0);
-          x = d.bbox.x0 || 0;
-          y = d.bbox.y0 || 0;
-          w = (d.bbox.x1 || 0) - x;
-          h = (d.bbox.y1 || 0) - y;
         }
         return {
           id:         d.id || `py-${Math.random().toString(36).slice(2, 9)}`,

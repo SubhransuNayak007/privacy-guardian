@@ -61,8 +61,9 @@ export function Navbar() {
             </button>
           </div>
           
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile actions & menu button */}
+          <div className="md:hidden flex items-center gap-2">
+            <ThemeToggle />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 -mr-2 text-secondary-text hover:text-primary-text"
@@ -93,9 +94,6 @@ export function Navbar() {
               
               {/* Mobile CTA */}
               <div className="p-4 flex flex-col gap-3">
-                <div className="flex justify-center mb-2">
-                  <ThemeToggle />
-                </div>
                 <Link 
                   href="/auth/signin"
                   onClick={() => setIsMobileMenuOpen(false)}

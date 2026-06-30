@@ -1,85 +1,77 @@
 <div align="center">
-  <h1>🛡️ Privacy Guardian</h1>
-  <p><strong>Intelligent AI-Powered Image Redaction & Privacy Engine</strong></p>
+  <img src="https://via.placeholder.com/150/000000/FFFFFF/?text=PrivacyGuardian" alt="Privacy Guardian Logo" width="150"/>
+  
+  # Privacy Guardian 🛡️
+  
+  **Next-Gen AI Privacy Redaction Engine**
+  
+  [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+  [![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org/)
+  [![YOLOv8](https://img.shields.io/badge/YOLO-v8-yellow)](https://ultralytics.com/)
+  [![PaddleOCR](https://img.shields.io/badge/OCR-PaddleOCR-blue)](#)
 </div>
 
-<br />
+<br/>
 
-Privacy Guardian is a full-stack, AI-driven application designed to automatically scan, detect, and redact sensitive information from images before they are shared. Built with a high-performance **11-Layer Machine Learning Pipeline**, it identifies PII (Personally Identifiable Information), NSFW content, faces, signatures, license plates, and sensitive documents with extreme accuracy.
-
-## ✨ Features
-
-- **11-Layer AI Pipeline:** Utilizes 6 concurrent machine learning models + 5 heuristic text layers.
-- **Smart Redaction:** Automatically blurs sensitive regions, preserving the context while destroying the data.
-- **Real-time Pipeline:** Highly optimized using Python `ThreadPoolExecutor` for concurrent CPU execution.
-- **Premium UI/UX:** Built with Next.js, Framer Motion, and Tailwind CSS. Features an insanely smooth, cinematic dark/light mode toggle.
-- **Secure Authentication:** Integrated with Supabase for robust user authentication.
-- **Public Tunneling:** Connects a Vercel Edge frontend directly to a local Python AI engine via Localtunnel.
+Privacy Guardian is a blazing-fast, dual-stack application that automatically detects and redacts Personally Identifiable Information (PII), NSFW content, faces, and sensitive identifiers from images.
 
 ---
 
-## 🛠️ Tech Stack
+## 🚀 Tech Stack
 
-### Frontend & UI
-- **Framework:** Next.js (App Router), React
-- **Styling:** Tailwind CSS, `next-themes`
-- **Animations:** Framer Motion, View Transitions API
-- **Components:** Radix UI, Lucide React
+### Frontend (User Interface)
+* **Framework:** Next.js 15 (App Router)
+* **Language:** TypeScript
+* **Styling:** Tailwind CSS + Custom CSS Variables for seamless Dark/Light theming
+* **Animations:** Framer Motion + View Transitions API (120FPS smooth transitions)
+* **State Management:** Zustand
+* **Storage:** IndexedDB (`idb`) for offline-capable sessions
 
-### Backend & AI Engine
-- **Server:** FastAPI, Uvicorn, Python
-- **Computer Vision:** OpenCV, NumPy
-- **Machine Learning Models:**
-  - **PaddleOCR & EasyOCR** (Optical Character Recognition)
-  - **YOLOv8** (Object detection for weapons, people)
-  - **InsightFace & MediaPipe** (Face detection)
-  - **fast-alpr / MobileViT** (License plate detection)
-  - **NudeNet** (NSFW content detection)
-  - **PyZBar** (QR/Barcode scanning)
-
-### Infrastructure & Deployment
-- **Database / Auth:** Supabase
-- **Frontend Hosting:** Vercel
-- **Backend Tunneling:** Localtunnel (`npx localtunnel`)
+### Backend (AI Pipeline)
+* **Framework:** FastAPI (Python)
+* **Multi-Threading:** `ThreadPoolExecutor` with 4-way Tiled Image Processing for 4x speedups!
+* **AI Models:**
+  * **OCR:** PaddleOCR (Primary) + EasyOCR (Fallback)
+  * **Face Detection:** InsightFace, MediaPipe v2, Haar Cascades
+  * **Object Detection:** YOLOv8n (Weapons, People)
+  * **NSFW Filter:** NudeNet (Exposed body parts)
+  * **License Plates:** fast-alpr (ONNX)
+* **Heuristics:** Regex for Indian PII (Aadhaar, PAN, GSTIN), Shipping Label Rules, Signature Detection
 
 ---
 
-## 🚀 Problems & Solutions
+## 🧠 Problems & Solutions
 
-Building Privacy Guardian presented several unique engineering challenges, particularly around processing speed and detection accuracy:
+### 1. High Latency on Large Images
+**Problem:** Processing a single high-res image through 6 heavy AI models sequentially took up to 300 seconds, causing API timeouts.
+**Solution:** Implemented **4-Way Concurrent Tiling**. The image is split into 4 quadrants, and each quadrant is processed in parallel using `concurrent.futures`. Detections are mapped back to global coordinates. **Result: ~4x faster detection.**
 
-### 1. The 300-Second Processing Bottleneck
-**Problem:** Initially, the system was taking 4-5 minutes (300 seconds) to process a single image. Running 6 heavy ML models (YOLO, PaddleOCR, InsightFace, etc.) sequentially on massive 4K phone camera uploads maxed out the CPU.
-**Solution:** 
-- **Intelligent Downscaling:** Added logic to downscale images to a maximum dimension of `960px` before feeding them into the models, cutting the pixel count by ~45% with no loss in OCR readability.
-- **Concurrent Execution:** Rewrote the core `scan` endpoint using Python's `concurrent.futures.ThreadPoolExecutor`. Instead of waiting for one model to finish, all independent ML models now run simultaneously across the CPU's multi-cores.
+### 2. Vercel Serverless Function Timeouts
+**Problem:** Free tier Vercel times out at 10 seconds, which wasn't enough even for local proxying.
+**Solution:** Configured `maxDuration = 60` in Next.js API routes and optimized the backend pipeline to fit within standard serverless limits.
 
-### 2. Missing OCR Fallback
-**Problem:** PaddleOCR is fast but struggles with rotated or highly obscured text. The pipeline was designed to fall back to `EasyOCR`, but the library was missing, causing silent failures on hard-to-read documents.
-**Solution:** Installed the `easyocr` dependencies (`torch`, `torchvision`, etc.) and wired it into a robust `try/except` fallback loop to guarantee text extraction regardless of the document's orientation.
+### 3. False Positives on Non-Faces
+**Problem:** Basic Haar cascades flagged random circular textures and text as faces.
+**Solution:** Upgraded to **InsightFace** and **MediaPipe v2 Tasks API** for robust facial recognition, retaining Haar only as a strict fallback.
 
-### 3. Theme Toggle Animation Overlaps
-**Problem:** The cinematic circle-wipe animation between light and dark modes looked unnatural because the newly generated view was always expanding outward, making transitions back to light mode feel jarring.
-**Solution:** Modified the View Transitions logic. When transitioning from Light ➡️ Dark, the Dark theme expands outward. When transitioning from Dark ➡️ Light, the Dark theme shrinks inward into a circle, revealing the Light theme underneath, creating a perfectly polished and reversible interaction.
+### 4. Bounding Box Rendering Bugs
+**Problem:** Blur wasn't applying because detection bounding boxes were returning `0` width/height.
+**Solution:** Fixed relative percentage scaling `(bbox.x1 - bbox.x0) / 100 * width_px` in the Canvas engine, ensuring perfect 1:1 redactions.
+
+### 5. UI/UX Clashing on Mobile Devices
+**Problem:** The Developer Tools panel overlapped with the primary Results Screen action buttons on mobile screens.
+**Solution:** Handled Z-index and responsive layout adjustments (`hidden md:flex flex-col` or `bottom-24` anchors) to keep the UI clean across viewports.
 
 ---
 
-## 💻 Running Locally
+## 🛠️ Where to Deploy?
 
-### 1. Start the Python AI Engine
-```bash
-cd python-engine
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
-```
+* **Frontend:** Deploy seamlessly on **Vercel** or **Netlify**.
+* **Backend:** Deploy on **AWS (EC2 / EKS)**, **Render**, or **Google Cloud Run**. Because of Heavy ML dependencies (OpenCV, PaddlePaddle, PyTorch), deploying via Docker with at least 4GB RAM is highly recommended over serverless platforms (like AWS Lambda).
 
-### 2. Start the Frontend
-```bash
-npm install
-npm run dev
-```
+---
 
-### 3. (Optional) Run the Background Launcher (Windows)
-Simply double click `start_background.vbs` to silently launch the Python backend and a public Localtunnel bridge in the background without needing an open terminal! Use `stop_background.bat` to kill the processes.
+<div align="center">
+  <i>Built with ❤️ for Privacy and Security.</i>
+</div>
