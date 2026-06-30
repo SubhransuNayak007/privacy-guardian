@@ -1,0 +1,28 @@
+# Privacy Guardian V6 — Multi-Model Requirements
+fastapi
+uvicorn[standard]
+paddlepaddle
+paddleocr
+# easyocr  # optional Hindi supplement
+ultralytics          # YOLOv8n for persons, weapons, vehicles
+opencv-python-headless
+pydantic
+python-multipart
+psutil
+
+# Face detection
+insightface
+onnxruntime
+
+# NSFW body-part detection (NudeNet v3)
+nudenet              # pip install nudenet
+
+# License plate detector + OCR
+fast-alpr            # pip install fast-alpr
+
+# Barcode / QR
+pyzbar
+
+# Extras
+einops
+timm

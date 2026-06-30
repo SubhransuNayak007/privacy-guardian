@@ -1,0 +1,6 @@
+path: D:\rot post\privacy-guardian\python-engine\datasets\indian_plates
+train: images/train
+val: images/val
+
+names:
+  0: license_plate
