@@ -106,8 +106,12 @@ def process_image_task(job_id: str, b64_str: str):
             final_label = regex_label if regex_label else (presidio_label if presidio_label else None)
             
             if final_label:
+                x_min = max(0.0, min([p[0] for p in box]))
+                y_min = max(0.0, min([p[1] for p in box]))
+                x_max = min(float(W), max([p[0] for p in box]))
+                y_max = min(float(H), max([p[1] for p in box]))
                 pii_boxes.append({
-                    "box": [min([p[0] for p in box])/W, min([p[1] for p in box])/H, max([p[0] for p in box])/W, max([p[1] for p in box])/H],
+                    "box": [x_min/W, y_min/H, x_max/W, y_max/H],
                     "label": final_label,
                     "score": conf,
                     "text": txt
@@ -128,7 +132,7 @@ def process_image_task(job_id: str, b64_str: str):
                 call_vlm(img, d["label"], d["score"])
                 
         # 8. Blur (We'll just blur all PII and sensitive YOLO targets for now)
-        sensitive_labels = ["pii_text", "face", "person", "nsfw", "license_plate", "aadhaar", "pan", "dob", "name", "email", "phone", "address", "bank_account", "credit_card", "password", "qr_code", "barcode"]
+        sensitive_labels = ["pii_text", "face", "person", "nsfw", "license_plate", "aadhaar", "pan", "dob", "name", "email", "phone", "address", "bank_account", "credit_card", "password", "qr_code", "barcode", "passport", "voter_id", "social_media"]
         blur_boxes = [d["box"] for d in final_dets if d["label"].lower() in sensitive_labels]
         img_blurred = apply_gaussian_blur(img, blur_boxes)
         

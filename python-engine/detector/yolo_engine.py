@@ -58,7 +58,7 @@ def run_yolo_batch(patches) -> List[List[Dict[str, Any]]]:
             dets = []
             for box in res.boxes:
                 conf = float(box.conf[0])
-                if conf > 0.3:
+                if conf > 0.25:
                     name = res.names[int(box.cls[0])]
                     x1, y1, x2, y2 = map(float, box.xyxy[0])
                     dets.append({"box": [x1, y1, x2, y2], "score": conf, "label": name})
@@ -72,7 +72,7 @@ def run_yolo_batch(patches) -> List[List[Dict[str, Any]]]:
                         for face in faces:
                             fx1, fy1, fx2, fy2 = face.bbox
                             score = float(face.det_score)
-                            if score > 0.3:
+                            if score > 0.25:
                                 dets.append({
                                     "box": [float(fx1), float(fy1), float(fx2), float(fy2)],
                                     "score": score,
@@ -90,7 +90,7 @@ def run_yolo_batch(patches) -> List[List[Dict[str, Any]]]:
                                         for pf in p_faces:
                                             pfx1, pfy1, pfx2, pfy2 = pf.bbox
                                             score = float(pf.det_score)
-                                            if score > 0.2:
+                                            if score > 0.15:
                                                 dets.append({
                                                     "box": [float(pfx1 + px1), float(pfy1 + py1), float(pfx2 + px1), float(pfy2 + py1)],
                                                     "score": score,

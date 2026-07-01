@@ -68,7 +68,29 @@ def detect_regex(text: str) -> str:
     if re.search(r'\b(OTP|One Time Password|Verification Code|Secure Code|Pin Code|PIN)\b', text, re.IGNORECASE):
         return "password"
         
-    # 7. Generic PII headers
+    # 7. Credit / Debit Cards
+    if re.search(r'\b(?:\d[ -]*?){13,16}\b', text):
+        return "credit_card"
+        
+    # 8. Emails
+    if re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', text):
+        return "email"
+        
+    # 9. Phone Numbers (India / International fallback)
+    if re.search(r'\b(?:\+?91[\-\s]?)?[6789]\d{9}\b', text) or re.search(r'\b\d{3}[\-\.\s]??\d{3}[\-\.\s]??\d{4}\b', text):
+        return "phone"
+        
+    # 10. Passport & Voter ID
+    if re.search(r'\b[A-PR-WYa-pr-wy][1-9]\d\s?\d{4}[1-9]\b', text, re.IGNORECASE): # Indian Passport
+        return "passport"
+    if re.search(r'\b[A-Z]{3}\d{7}\b', text, re.IGNORECASE): # EPIC / Voter ID
+        return "voter_id"
+        
+    # 11. Social Media Handles
+    if re.search(r'(?<=^|(?<=[^a-zA-Z0-9-_\.]))@([A-Za-z]+[A-Za-z0-9_]+)', text):
+        return "social_media"
+        
+    # 12. Generic PII headers
     if re.search(r'\b(Name|Father|Gender|Male|Female)\b', text, re.IGNORECASE):
         return "pii_text"
         

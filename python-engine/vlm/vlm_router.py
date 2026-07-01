@@ -5,5 +5,6 @@ def call_vlm(img_crop, doc_type: str, confidence: float):
         return None
         
     print(f"Triggering Tier-2 VLM for {doc_type} due to low confidence ({confidence})...")
-    # MOCK implementation to prevent VRAM overflow on standard servers
-    return {"extracted_text": "MOCKED_VLM_TEXT", "sensitive_regions": []}
+    # VLM is currently disabled to prevent VRAM overflow on standard servers
+    # Would normally return Florence-2 extraction here
+    return {"extracted_text": "", "sensitive_regions": []}
