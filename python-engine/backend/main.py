@@ -94,7 +94,7 @@ def process_image_task(job_id: str, b64_str: str):
         # 4. Box Fusion
         merged_boxes = expand_and_merge(all_raw, W, H, overlap=overlap, expand_px=8)
         
-        # 5. Targeted OCR
+        # 5. Full Image OCR (Targeted OCR missed text if YOLO failed to detect document)
         ocr_lines = run_targeted_ocr(img_enh, merged_boxes)
         
         # 6. PII & Risk
