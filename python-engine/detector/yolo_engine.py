@@ -20,7 +20,7 @@ def get_yolo():
     return _yolo_model
 
 def get_models():
-    global _face_app, _plate_cascade
+    global _face_app
     if _face_app is None:
         try:
             from insightface.app import FaceAnalysis
@@ -30,16 +30,7 @@ def get_models():
             print(f"Error loading insightface: {e}")
             _face_app = "unavailable"
             
-    if _plate_cascade is None:
-        try:
-            plate_path = os.path.join(cv2.data.haarcascades, 'haarcascade_russian_plate_number.xml')
-            if os.path.exists(plate_path):
-                _plate_cascade = cv2.CascadeClassifier(plate_path)
-        except Exception as e:
-            print(f"Error loading plate cascade: {e}")
-            _plate_cascade = "unavailable"
-            
-    return _face_app, _plate_cascade
+    return _face_app, None
 
 def run_yolo_tile(patch) -> List[Dict[str, Any]]:
     yolo = get_yolo()
@@ -88,15 +79,23 @@ def run_yolo_batch(patches) -> List[List[Dict[str, Any]]]:
                                     "label": "face"
                                 })
                                 
-                    if plate_casc is not None and plate_casc != "unavailable":
-                        gray = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
-                        plates = plate_casc.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 10))
-                        for (x, y, w, h) in plates:
-                            dets.append({
-                                "box": [float(x), float(y), float(x+w), float(y+h)],
-                                "score": 0.85,
-                                "label": "license_plate"
-                            })
+                        # Run InsightFace specifically on person crops to catch small/distant faces
+                        for d in list(dets):
+                            if d["label"] == "person":
+                                px1, py1, px2, py2 = map(int, d["box"])
+                                if px2 - px1 > 20 and py2 - py1 > 20:
+                                    person_crop = patch[py1:py2, px1:px2]
+                                    if person_crop.size > 0:
+                                        p_faces = face_app.get(person_crop)
+                                        for pf in p_faces:
+                                            pfx1, pfy1, pfx2, pfy2 = pf.bbox
+                                            score = float(pf.det_score)
+                                            if score > 0.2:
+                                                dets.append({
+                                                    "box": [float(pfx1 + px1), float(pfy1 + py1), float(pfx2 + px1), float(pfy2 + py1)],
+                                                    "score": score,
+                                                    "label": "face"
+                                                })
                 except Exception as e:
                     print(f"Error in extra detection: {e}")
             batch_dets.append(dets)

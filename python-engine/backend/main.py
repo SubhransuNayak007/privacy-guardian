@@ -100,11 +100,16 @@ def process_image_task(job_id: str, b64_str: str):
         # 6. PII & Risk
         pii_boxes = []
         for box, txt, conf in ocr_lines:
-            if detect_regex(txt) or analyze_text(txt):
+            regex_label = detect_regex(txt)
+            presidio_label = analyze_text(txt)
+            final_label = regex_label if regex_label else (presidio_label if presidio_label else None)
+            
+            if final_label:
                 pii_boxes.append({
                     "box": [min([p[0] for p in box])/W, min([p[1] for p in box])/H, max([p[0] for p in box])/W, max([p[1] for p in box])/H],
-                    "label": "pii_text",
-                    "score": conf
+                    "label": final_label,
+                    "score": conf,
+                    "text": txt
                 })
                 
         final_dets = merged_boxes + pii_boxes
@@ -117,7 +122,8 @@ def process_image_task(job_id: str, b64_str: str):
                 call_vlm(img, d["label"], d["score"])
                 
         # 8. Blur (We'll just blur all PII and sensitive YOLO targets for now)
-        blur_boxes = [d["box"] for d in final_dets if d["label"] in ["pii_text", "face", "nsfw", "license_plate"]]
+        sensitive_labels = ["pii_text", "face", "nsfw", "license_plate", "aadhaar", "pan", "dob", "name", "email", "phone", "address", "bank_account", "credit_card", "password"]
+        blur_boxes = [d["box"] for d in final_dets if d["label"] in sensitive_labels]
         img_blurred = apply_gaussian_blur(img, blur_boxes)
         
         _, buffer = cv2.imencode('.jpg', img_blurred)
@@ -133,8 +139,8 @@ def process_image_task(job_id: str, b64_str: str):
                 type=fd["label"],
                 confidence=float(fd["score"]) * 100.0,
                 bbox=BoundingBox(x0=bx[0]*100, y0=bx[1]*100, x1=bx[2]*100, y1=bx[3]*100),
-                text="",
-                redacted=(fd["label"] in ["pii_text", "face", "nsfw", "license_plate"])
+                text=fd.get("text", ""),
+                redacted=(fd["label"] in sensitive_labels)
             ))
 
         job_results[job_id] = {
