@@ -21,7 +21,7 @@ def run_targeted_ocr(img: np.ndarray, doc_boxes: list) -> list:
     try:
         # Run OCR on the entire image to ensure we catch all text,
         # even if YOLO failed to detect a "document" box.
-        res = paddle.ocr(img, cls=False)
+        res = paddle.ocr(img)
         if res and res[0]:
             for line in res[0]:
                 box, (txt, conf) = line
