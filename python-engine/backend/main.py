@@ -117,7 +117,7 @@ def process_image_task(job_id: str, b64_str: str):
                 call_vlm(img, d["label"], d["score"])
                 
         # 8. Blur (We'll just blur all PII and sensitive YOLO targets for now)
-        blur_boxes = [d["box"] for d in final_dets if d["label"] in ["pii_text", "face", "nsfw"]]
+        blur_boxes = [d["box"] for d in final_dets if d["label"] in ["pii_text", "face", "nsfw", "license_plate"]]
         img_blurred = apply_gaussian_blur(img, blur_boxes)
         
         _, buffer = cv2.imencode('.jpg', img_blurred)
@@ -134,7 +134,7 @@ def process_image_task(job_id: str, b64_str: str):
                 confidence=float(fd["score"]) * 100.0,
                 bbox=BoundingBox(x0=bx[0]*100, y0=bx[1]*100, x1=bx[2]*100, y1=bx[3]*100),
                 text="",
-                redacted=(fd["label"] in ["pii_text", "face", "nsfw"])
+                redacted=(fd["label"] in ["pii_text", "face", "nsfw", "license_plate"])
             ))
 
         job_results[job_id] = {
