@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Clock, Lock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
-import { runAIPipeline, SCAN_STAGES } from '@/lib/ai/pipeline';
+import { startScanJob, pollScanJob, SCAN_STAGES } from '@/lib/ai/pipeline';
 import { saveScanSession, fileToBase64 } from '@/lib/idb';
 import type { PipelineStatus } from '@/types';
 
@@ -35,6 +35,7 @@ export function ScanningScreen({ scanId }: ScanningScreenProps) {
   const [pipelineStatusState, setPipelineStatusState] = useState<PipelineStatus | null>(null);
   const didStartRef = useRef(false);
   const startTimeRef = useRef<number>(0);
+  const didCompleteRef = useRef(false);
 
   const file = currentFile;
 
@@ -47,12 +48,16 @@ export function ScanningScreen({ scanId }: ScanningScreenProps) {
 
     async function animateStages() {
       let elapsed = 0;
+      const timer = setInterval(() => {
+        setElapsedMs(Date.now() - startTimeRef.current);
+      }, 1000);
 
       for (let i = 0; i < SCAN_STAGES.length; i++) {
+        if (didCompleteRef.current) break;
+
         const stage = SCAN_STAGES[i];
         const stageDuration = stage.duration;
 
-        // Mark stage as active
         setCurrentStageIdx(i);
         setStages(prev => prev.map((s, idx) => ({
           ...s,
@@ -60,88 +65,101 @@ export function ScanningScreen({ scanId }: ScanningScreenProps) {
           progress: idx === i ? 0 : idx < i ? 100 : 0,
         })));
 
-        // Animate progress within this stage
-        const steps = 60;
-        const stepDuration = stageDuration / steps;
+        // Wait a tick for React to render the active state at 0 progress
+        await new Promise(r => setTimeout(r, 50));
+        
+        if (didCompleteRef.current) break;
 
-        for (let step = 1; step <= steps; step++) {
-          await new Promise(r => setTimeout(r, stepDuration));
-          const stageProgress = (step / steps) * 100;
-          const overall = Math.round(((elapsed + (step / steps) * stageDuration) / totalDuration) * 100);
+        setStages(prev => prev.map((s, idx) =>
+          idx === i ? { ...s, progress: 100 } : s
+        ));
+        
+        const overall = Math.round(((elapsed + stageDuration) / totalDuration) * 100);
+        setOverallProgress(Math.min(95, overall));
 
-          setStages(prev => prev.map((s, idx) =>
-            idx === i ? { ...s, progress: stageProgress } : s
-          ));
-          setOverallProgress(Math.min(95, overall));
-          // Use real wall-clock time for elapsed display
-          setElapsedMs(Date.now() - startTimeRef.current);
-        }
-
-        // Mark stage as done
-        setStages(prev => prev.map((s, idx) => ({
-          ...s,
-          status: idx <= i ? 'done' : idx === i + 1 ? 'active' : 'pending',
-          progress: idx <= i ? 100 : 0,
-        })));
-
+        await new Promise(r => setTimeout(r, stageDuration));
+        
         elapsed += stageDuration;
-        await new Promise(r => setTimeout(r, 120));
       }
+      clearInterval(timer);
     }
 
     async function runScan() {
-      // Run animation and AI pipeline concurrently
-      const [, result] = await Promise.all([
-        animateStages(),
-        runAIPipeline(file!),
-      ]);
+      try {
+        const animationPromise = animateStages();
 
-      // All stages done
-      setOverallProgress(100);
-      setStages(prev => prev.map(s => ({ ...s, status: 'done', progress: 100 })));
-      setScanComplete(true);
+        let jobId = localStorage.getItem('lastJobId');
+        
+        if (!jobId) {
+          jobId = await startScanJob(file!);
+          localStorage.setItem('lastJobId', jobId);
+        }
 
-      // Capture pipeline status for display
-      if (result.pipelineStatus) {
-        setPipelineStatusState(result.pipelineStatus);
-      }
+        let result: any = null;
+        while (true) {
+          const pollResult = await pollScanJob(jobId, file!);
+          if ('status' in pollResult && (pollResult.status === 'not_found' || pollResult.status === 'failed' || pollResult.status === 'error')) {
+            localStorage.removeItem('lastJobId');
+            jobId = await startScanJob(file!);
+            localStorage.setItem('lastJobId', jobId);
+          } else if ('id' in pollResult && pollResult.id) {
+            result = pollResult;
+            break;
+          }
+          await new Promise(r => setTimeout(r, 1500));
+        }
 
-      // Store result
-      setResult(result);
-      setScanStatus('complete');
+        localStorage.removeItem('lastJobId');
+        didCompleteRef.current = true;
 
-      // Add to recent scans
-      if (file) {
-        addRecentScan({
-          id: result.id,
-          filename: file.name,
-          thumbnail: file.previewUrl,
-          privacyScore: result.privacyScore,
-          riskLevel: result.riskLevel,
-          scannedAt: new Date(),
-          detectionCount: result.detections.length,
-        });
+        // All stages done
+        setOverallProgress(100);
+        setStages(prev => prev.map(s => ({ ...s, status: 'done', progress: 100 })));
+        setScanComplete(true);
 
-        if (file.originalFile) {
-          try {
-            const base64 = await fileToBase64(file.originalFile);
-            await saveScanSession(result.id, result, file, base64);
-          } catch (err) {
-            console.error('Failed to save session to IndexedDB', err);
+        // Capture pipeline status for display
+        if (result.pipelineStatus) {
+          setPipelineStatusState(result.pipelineStatus);
+        }
+
+        // Store result
+        setResult(result);
+        setScanStatus('complete');
+
+        // Add to recent scans
+        if (file) {
+          addRecentScan({
+            id: result.id,
+            filename: file.name,
+            thumbnail: file.previewUrl,
+            privacyScore: result.privacyScore,
+            riskLevel: result.riskLevel,
+            scannedAt: new Date(),
+            detectionCount: result.detections.length,
+          });
+
+          if (file.originalFile) {
+            try {
+              const base64 = await fileToBase64(file.originalFile);
+              await saveScanSession(result.id, result, file, base64);
+            } catch (err) {
+              console.error('Failed to save session to IndexedDB', err);
+            }
           }
         }
-      }
 
-      // Show pipeline status for ~2.5s, then navigate
-      await new Promise(r => setTimeout(r, 2500));
-      router.push(`/results/${result.id}`);
+        // Show pipeline status for ~2.5s, then navigate
+        await new Promise(r => setTimeout(r, 2500));
+        router.push(`/results/${result.id}`);
+      } catch (err: any) {
+        console.error('Scan error:', err);
+        didCompleteRef.current = true;
+        setScanStatus('error');
+        setError(err.message || 'An unknown error occurred');
+      }
     }
 
-    runScan().catch(err => {
-      console.error('Scan error:', err);
-      setScanStatus('error');
-      setError(err.message || 'An unknown error occurred');
-    });
+    runScan();
   }, [file, scanId, router, setResult, setScanStatus, setError, addRecentScan]);
 
   useEffect(() => {
@@ -240,6 +258,7 @@ export function ScanningScreen({ scanId }: ScanningScreenProps) {
                 label={stage.label}
                 status={stage.status}
                 progress={stage.progress}
+                duration={stage.duration}
                 index={i}
               />
             ))}
@@ -347,11 +366,13 @@ function ScanStage({
   label,
   status,
   progress,
+  duration,
   index,
 }: {
   label: string;
   status: 'pending' | 'active' | 'done';
   progress: number;
+  duration: number;
   index: number;
 }) {
   return (
@@ -408,7 +429,10 @@ function ScanStage({
             >
               <div
                 className="stage-bar-fill"
-                style={{ width: `${progress}%` }}
+                style={{ 
+                  width: `${progress}%`,
+                  transition: `width ${duration}ms linear`
+                }}
               />
             </motion.div>
           )}

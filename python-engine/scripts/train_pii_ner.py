@@ -69,7 +69,7 @@ def main():
         args=training_args,
         train_dataset=train_data,
         eval_dataset=train_data,
-        tokenizer=model.data_processor.transformer_tokenizer,
+        processing_class=model.data_processor.transformer_tokenizer,
         data_collator=model.data_processor.collate_fn,
     )
 

@@ -96,11 +96,20 @@ class PipelineManager:
         """
         Executes the AI Decision Graph on the provided image.
         """
-        initial_state = {"image": image}
-        final_state = await self.scheduler.execute(initial_state)
-        
-        return {
-            "detections": final_state.get("final_detections", []),
-            "verification_passed": final_state.get("verification_passed", False),
-            "status": "success" if final_state.get("verification_passed") else "verification_failed"
-        }
+        try:
+            initial_state = {"image": image}
+            final_state = await self.scheduler.execute(initial_state)
+            
+            return {
+                "detections": final_state.get("final_detections", []),
+                "verification_passed": final_state.get("verification_passed", False),
+                "status": "success" if final_state.get("verification_passed") else "verification_failed"
+            }
+        except Exception as e:
+            # Safely wrap any pipeline errors
+            return {
+                "detections": [],
+                "verification_passed": False,
+                "status": "error",
+                "error_message": str(e)
+            }

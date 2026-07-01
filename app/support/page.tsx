@@ -45,7 +45,7 @@ export default function SupportPage() {
           </a>
 
           <a
-            href="https://www.linkedin.com/in/subhransu-nayak-4b33383a7"
+            href="https://linkedin.com/company/cosmic-crumbs"
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center p-8 glass-panel rounded-3xl shadow-sm hover:shadow-md transition-shadow group"
@@ -55,7 +55,7 @@ export default function SupportPage() {
             </div>
             <h3 className="text-xl font-800 mb-2">Connect on LinkedIn</h3>
             <span className="text-primary font-600 hover:underline transition-colors text-center">
-              Subhransu Nayak
+              Privacy Guardian
             </span>
           </a>
         </div>

@@ -1,0 +1,38 @@
+{
+  "Confidence Fusion": {
+    "status": "FAIL",
+    "msg": "No risk_score in detections. Logic missing."
+  },
+  "Tier-2 Routing": {
+    "status": "PASS",
+    "msg": "VLM was triggered for low confidence document."
+  },
+  "Tier-3 FastSAM": {
+    "status": "FAIL",
+    "msg": "No mask-based FastSAM logic found for tattoo."
+  },
+  "Redaction Quality": {
+    "status": "PASS",
+    "msg": "Gaussian blur covers box and doesn't leak to background."
+  },
+  "Async Queue": {
+    "status": "PASS",
+    "msg": "Endpoint returned in 2.91ms with status queued"
+  },
+  "Error Handling": {
+    "status": "PASS",
+    "msg": "Handled corrupt image gracefully."
+  },
+  "Security (Data Retention)": {
+    "status": "PASS",
+    "msg": "No temp files left on disk."
+  },
+  "Performance": {
+    "status": "PASS",
+    "msg": "10 requests in 0.58s (avg 0.06s)"
+  },
+  "Logging": {
+    "status": "FAIL",
+    "msg": "No standard logging found in pipeline."
+  }
+}

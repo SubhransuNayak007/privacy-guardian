@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, Lock, Clock, ChevronRight, UserPlus, Menu, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { TrustedFacesModal } from '@/components/ui/TrustedFacesModal';
 import { Logo } from '@/components/ui/Logo';
 
@@ -85,11 +86,11 @@ export function Navbar() {
           >
             <div className="px-4 py-4 space-y-4">
               <div className="flex flex-col gap-2">
-                <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-500 text-primary-text py-2 border-b border-border">Home</Link>
-                <Link href="/how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-500 text-primary-text py-2 border-b border-border">How it works</Link>
-                <Link href="/security" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-500 text-primary-text py-2 border-b border-border">Security</Link>
-                <Link href="/pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-500 text-primary-text py-2 border-b border-border">Pricing</Link>
-                <Link href="/support" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-500 text-primary-text py-2">Support</Link>
+                <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/' ? 'text-primary' : 'text-primary-text'}`}>Home</Link>
+                <Link href="/how-it-works" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/how-it-works' ? 'text-primary' : 'text-primary-text'}`}>How it works</Link>
+                <Link href="/security" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/security' ? 'text-primary' : 'text-primary-text'}`}>Security</Link>
+                <Link href="/pricing" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/pricing' ? 'text-primary' : 'text-primary-text'}`}>Pricing</Link>
+                <Link href="/support" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 ${usePathname() === '/support' ? 'text-primary' : 'text-primary-text'}`}>Support</Link>
               </div>
               
               {/* Mobile CTA */}
@@ -121,12 +122,26 @@ export function Navbar() {
 }
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
   return (
     <Link
       href={href}
-      className="text-sm font-500 text-secondary-text hover:text-primary-text transition-colors duration-150"
+      className={`relative text-sm font-500 transition-colors duration-150 py-1 ${
+        isActive
+          ? 'text-primary'
+          : 'text-secondary-text hover:text-primary-text'
+      }`}
     >
       {children}
+      {isActive && (
+        <motion.div
+          layoutId="navbar-active"
+          className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-primary rounded-full"
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        />
+      )}
     </Link>
   );
 }

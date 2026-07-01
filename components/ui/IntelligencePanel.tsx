@@ -14,7 +14,8 @@ interface IntelligencePanelProps {
 }
 
 export function IntelligencePanel({ result, onDownloadReport }: IntelligencePanelProps) {
-  const riskConfig = RISK_CONFIG[result.riskLevel];
+  const normalizedRiskLevel = (result.riskLevel?.toLowerCase() || 'low') as keyof typeof RISK_CONFIG;
+  const riskConfig = RISK_CONFIG[normalizedRiskLevel] || RISK_CONFIG['low'];
   const sortedDetections = [...result.detections].sort((a, b) => b.confidence - a.confidence);
   const criticalTypes: DetectionType[] = ['aadhaar', 'pan', 'bank_account', 'credit_card', 'password'];
   const criticalDetections = sortedDetections.filter(d => criticalTypes.includes(d.type));

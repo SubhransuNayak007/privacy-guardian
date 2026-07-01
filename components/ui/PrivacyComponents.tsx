@@ -108,11 +108,11 @@ export function DetectionBadge({ detection, showConfidence = true, size = 'md' }
 // ───────────────────────────────────────────
 // Risk Badge
 // ───────────────────────────────────────────
-export function RiskBadge({ riskLevel }: { riskLevel: RiskLevel }) {
-  const config = RISK_CONFIG[riskLevel];
-  const Icon = riskLevel === 'low' ? CheckCircle
-    : riskLevel === 'medium' ? AlertTriangle
-    : riskLevel === 'high' ? AlertCircle
+export function RiskBadge({ riskLevel }: { riskLevel: RiskLevel | string | undefined }) {
+  const config = riskLevel && riskLevel in RISK_CONFIG ? RISK_CONFIG[riskLevel as RiskLevel] : RISK_CONFIG['low'];
+  const Icon = config.label === 'Low Risk' ? CheckCircle
+    : config.label === 'Medium Risk' ? AlertTriangle
+    : config.label === 'High Risk' ? AlertCircle
     : XCircle;
 
   return (

@@ -32,7 +32,7 @@ def parse_yolo_label(label_path, img_w, img_h):
         for line in f:
             parts = line.strip().split()
             if len(parts) >= 5:
-                cls_id = int(parts[0])
+                cls_id = int(float(parts[0]))
                 x_c = float(parts[1]) * img_w
                 y_c = float(parts[2]) * img_h
                 w = float(parts[3]) * img_w

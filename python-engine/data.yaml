@@ -1,0 +1,5 @@
+train: dataset/augmented_pan/images
+val: dataset/augmented_pan/images
+
+nc: 5
+names: ['photo', 'pan_number', 'emblem', 'qr', 'text']

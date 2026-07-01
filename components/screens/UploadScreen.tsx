@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, Image, FileText, Shield, Lock, Clock,
   AlertCircle, Zap, ChevronRight, Eye, History,
-  ShieldCheck, Search, Star
+  ShieldCheck, Search, Star, RotateCw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
@@ -25,7 +25,30 @@ export function UploadScreen({ setScanId }: { setScanId?: (id: string) => void }
   const { setFile, recentScans, setScanStatus, setCurrentStage } = useAppStore();
   const [error, setError] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [resumableJobId, setResumableJobId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const jobId = localStorage.getItem('lastJobId');
+    if (jobId) {
+      setResumableJobId(jobId);
+    }
+  }, []);
+
+  const handleResume = () => {
+    if (!resumableJobId) return;
+    const dummyFile = {
+      id: resumableJobId,
+      name: 'Resumed Scan',
+      size: 0,
+      dimensions: { width: 0, height: 0 },
+      type: 'image/jpeg',
+      previewUrl: '',
+      uploadedAt: new Date(),
+    };
+    setFile(dummyFile as any);
+    router.push(`/scan/${resumableJobId}`);
+  };
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -92,6 +115,30 @@ export function UploadScreen({ setScanId }: { setScanId?: (id: string) => void }
       <div className="absolute inset-0 dark:bg-text-scrim -z-10 pointer-events-none transition-colors duration-700" />
 
       <div className="w-full max-w-2xl relative z-10 mt-8">
+        
+        {resumableJobId && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 rounded-2xl glass-panel border border-primary/40 flex items-center justify-between shadow-soft bg-surface"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <RotateCw size={20} className="text-primary animate-spin" style={{ animationDuration: '3s' }} />
+              </div>
+              <div>
+                <p className="text-sm font-600 text-primary-text">Scan in progress</p>
+                <p className="text-xs text-secondary-text">You have an ongoing privacy scan.</p>
+              </div>
+            </div>
+            <button
+              onClick={handleResume}
+              className="text-sm font-500 bg-primary text-background px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-colors"
+            >
+              Resume
+            </button>
+          </motion.div>
+        )}
         
         {/* Floating Marketing Badges (Desktop Only) */}
         <motion.div 
@@ -343,8 +390,10 @@ export function UploadScreen({ setScanId }: { setScanId?: (id: string) => void }
           ].map(({ icon: Icon, label, desc, color, demo }) => (
             <button
               key={label}
+              type="button"
               id={`format-${label.toLowerCase().replace(/\W/g, '-')}`}
-              className="group flex flex-col items-center gap-2 p-4 min-h-[44px] min-w-[44px] glass-panel hover:border-primary/40 hover:shadow-soft transition-all duration-300 text-center rounded-2xl hover:-translate-y-0.5"
+              onClick={(e) => { e.stopPropagation(); if (demo) router.push('/how-it-works'); }}
+              className="group flex flex-col items-center gap-2 p-4 min-h-[44px] min-w-[44px] glass-panel hover:border-primary/40 hover:shadow-soft transition-all duration-300 text-center rounded-2xl hover:-translate-y-0.5 relative z-50"
             >
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface border border-border group-hover:border-transparent transition-colors"

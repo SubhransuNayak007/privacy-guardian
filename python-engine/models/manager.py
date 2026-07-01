@@ -31,7 +31,7 @@ class ModelManager:
         if self._paddle is None:
             try:
                 from paddleocr import PaddleOCR
-                self._paddle = PaddleOCR(use_angle_cls=True, lang="en", enable_mkldnn=False, cpu_threads=2)
+                self._paddle = PaddleOCR(use_angle_cls=False, lang="en", enable_mkldnn=False, cpu_threads=2)
             except Exception as e:
                 print(f"Error loading PaddleOCR: {e}")
                 self._paddle = "unavailable"
@@ -66,11 +66,48 @@ class ModelManager:
                 print(f"Error loading Florence-2 VLM (Falling back to mock): {e}")
                 self._vlm = "florence_mock"
         return self._vlm
+
+    def get_nudenet(self):
+        if not hasattr(self, '_nudenet'):
+            self._nudenet = None
+            
+        if self._nudenet is None:
+            try:
+                from nudenet import NudeDetector
+                self._nudenet = NudeDetector()
+            except Exception as e:
+                print(f"Error loading NudeNet: {e}")
+                self._nudenet = "unavailable"
+        return self._nudenet
         
+    def get_fastsam(self):
+        if not hasattr(self, '_fastsam'):
+            self._fastsam = None
+            
+        if self._fastsam is None:
+            try:
+                from ultralytics import FastSAM
+                self._fastsam = FastSAM("FastSAM-s.pt")
+            except Exception as e:
+                print(f"Error loading FastSAM: {e}")
+                self._fastsam = "unavailable"
+        return self._fastsam
+
+    def preload_models(self):
+        import logging
+        logger = logging.getLogger("privacy_guardian")
+        logger.info("Pre-downloading models in background (NudeNet, FastSAM)...")
+        # Explicitly trigger lazy loaders so weights are cached
+        self.get_nudenet()
+        self.get_fastsam()
+        logger.info("Model pre-download complete!")
+
     def get_status(self):
         return {
             "yolo": "loaded" if self._yolo and self._yolo != "unavailable" else str(self._yolo),
             "paddle": "loaded" if self._paddle and self._paddle != "unavailable" else str(self._paddle),
             "presidio": "loaded" if self._presidio and self._presidio != "unavailable" else str(self._presidio),
-            "vlm": "loaded" if self._vlm and self._vlm != "unavailable" else str(self._vlm)
+            "vlm": "loaded" if self._vlm and self._vlm != "unavailable" else str(self._vlm),
+            "nudenet": "loaded" if hasattr(self, '_nudenet') and self._nudenet and self._nudenet != "unavailable" else "unloaded",
+            "fastsam": "loaded" if hasattr(self, '_fastsam') and self._fastsam and self._fastsam != "unavailable" else "unloaded"
         }

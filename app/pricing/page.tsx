@@ -54,12 +54,12 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <Link
-              href="/"
+            <a
+              href="/#upload-drop-zone"
               className="block w-full py-3 px-4 text-center rounded-xl font-600 transition-all duration-200 hover:bg-surface-elevated bg-surface text-primary border border-border shadow-sm"
             >
               Get Started Free
-            </Link>
+            </a>
           </div>
 
           {/* Pro — Most Popular */}
@@ -98,11 +98,12 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <button
+            <Link
+              href="/auth/signup?plan=pro"
               className="block w-full py-3.5 px-4 text-center rounded-xl font-700 transition-all duration-200 hover:scale-[1.02] bg-surface text-primary shadow-sm"
             >
               Start 7-day free trial
-            </button>
+            </Link>
           </div>
 
           {/* Max */}
