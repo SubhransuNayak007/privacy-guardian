@@ -3,7 +3,7 @@ import time
 import numpy as np
 import cv2
 import psutil
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Response
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
@@ -16,6 +16,7 @@ from pii.regex_engine import detect_regex
 from pii.risk_score import calculate_risk_score
 from vlm.vlm_router import call_vlm
 from segmentation.blur import apply_gaussian_blur
+from detector.barcode_engine import detect_barcodes_and_qr
 
 app = FastAPI(title="Privacy Guardian v2 Production Architecture")
 
@@ -113,6 +114,11 @@ def process_image_task(job_id: str, b64_str: str):
                 })
                 
         final_dets = merged_boxes + pii_boxes
+        
+        # Add barcodes and QR codes
+        barcode_boxes = detect_barcodes_and_qr(img)
+        final_dets.extend(barcode_boxes)
+        
         risk = calculate_risk_score(final_dets)
         
         # 7. VLM Conditional
@@ -122,12 +128,11 @@ def process_image_task(job_id: str, b64_str: str):
                 call_vlm(img, d["label"], d["score"])
                 
         # 8. Blur (We'll just blur all PII and sensitive YOLO targets for now)
-        sensitive_labels = ["pii_text", "face", "nsfw", "license_plate", "aadhaar", "pan", "dob", "name", "email", "phone", "address", "bank_account", "credit_card", "password"]
+        sensitive_labels = ["pii_text", "face", "person", "nsfw", "license_plate", "aadhaar", "pan", "dob", "name", "email", "phone", "address", "bank_account", "credit_card", "password", "qr_code", "barcode"]
         blur_boxes = [d["box"] for d in final_dets if d["label"].lower() in sensitive_labels]
         img_blurred = apply_gaussian_blur(img, blur_boxes)
         
         _, buffer = cv2.imencode('.jpg', img_blurred)
-        b64_out = base64.b64encode(buffer).decode('utf-8')
         
         process_time = int((time.time() - t0) * 1000)
         
@@ -136,16 +141,16 @@ def process_image_task(job_id: str, b64_str: str):
         for fd in final_dets:
             bx = fd["box"]
             detections.append(AIBox(
-                type=fd["label"],
+                type=str(fd["label"]).lower(),
                 confidence=float(fd["score"]) * 100.0,
                 bbox=BoundingBox(x0=bx[0]*100, y0=bx[1]*100, x1=bx[2]*100, y1=bx[3]*100),
                 text=fd.get("text", ""),
-                redacted=(fd["label"].lower() in sensitive_labels)
+                redacted=(str(fd["label"]).lower() in sensitive_labels)
             ))
 
         job_results[job_id] = {
             "status": "completed",
-            "image": b64_out,
+            "image_bytes": buffer.tobytes(),
             "detections": [d.dict() for d in detections],
             "risk_score": risk,
             "processing_time": process_time
@@ -172,8 +177,7 @@ async def get_result(job_id: str):
             "message": "Job not found",
             "result": {
                 "riskLevel": "low",
-                "detections": [],
-                "image": ""
+                "detections": []
             }
         }
         
@@ -195,7 +199,6 @@ async def get_result(job_id: str):
             "result": {
                 "riskLevel": str(res.get("risk_score", "low")).lower(),
                 "detections": res.get("detections", []),
-                "image": res.get("image", ""),
                 "processingTime": res.get("processing_time", 0)
             }
         }
@@ -206,7 +209,17 @@ async def get_result(job_id: str):
             "message": res.get("message", "Unknown error"),
             "result": {
                 "riskLevel": "low",
-                "detections": [],
-                "image": ""
+                "detections": []
             }
         }
+
+@app.get("/image/{job_id}")
+async def get_image(job_id: str):
+    if job_id not in job_results or job_results[job_id].get("status") != "completed":
+        raise HTTPException(status_code=404, detail="Image not ready or not found")
+    
+    img_bytes = job_results[job_id].get("image_bytes")
+    if not img_bytes:
+        raise HTTPException(status_code=404, detail="No image bytes found")
+        
+    return Response(content=img_bytes, media_type="image/jpeg")

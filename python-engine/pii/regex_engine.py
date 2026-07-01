@@ -3,15 +3,19 @@ import re
 def is_indian_name(text: str) -> bool:
     text = text.strip()
     words = text.split()
-    if len(words) < 2 or len(words) > 3:
+    if len(words) < 2 or len(words) > 4:
         return False
         
     for w in words:
-        # Check if word is alphabetic and capitalized (e.g. Name or NAME)
+        # Check if word is alphabetic
         if not w.isalpha():
             return False
-        if not (w.isupper() or (w[0].isupper() and (len(w) == 1 or w[1:].islower()))):
-            return False
+            
+        # Only enforce title/upper casing for English (ASCII) words
+        # Hindi/regional scripts don't have casing, so w.isascii() protects them
+        if w.isascii():
+            if not (w.isupper() or (w[0].isupper() and (len(w) == 1 or w[1:].islower()))):
+                return False
             
     # Common words on government ID cards to exclude
     blacklist = {
@@ -20,7 +24,8 @@ def is_indian_name(text: str) -> bool:
         "father", "mother", "spouse", "card", "number", "of", "identity", 
         "citizenship", "verification", "online", "authentication", "xml", "offline",
         "signature", "holder", "thumb", "impression", "enrolment", "state", "district",
-        "post", "office", "no", "id", "card", "tax", "income", "department", "goi"
+        "post", "office", "no", "id", "tax", "income", "department", "goi",
+        "mera", "pehchan", "meripehchan", "yojna", "sarkar"
     }
     
     for w in words:
@@ -30,14 +35,18 @@ def is_indian_name(text: str) -> bool:
     return True
 
 def detect_regex(text: str) -> str:
+    # 1. Aadhaar
     clean_digits = re.sub(r'\D', '', text)
     if len(clean_digits) == 12: 
         return "aadhaar"
-        
-    if re.search(r'\b\d{4}\s?\d{4}\s?\d{4}\b', text):
+    if re.search(r'\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b', text):
         return "aadhaar"
+        
+    # 2. PAN
     if re.search(r'\b[A-Z]{5}\d{4}[A-Z]\b', text):
         return "pan"
+        
+    # 3. DOB
     if re.search(r'\b\d{2}[/\-]\d{2}[/\-]\d{4}\b', text):
         return "dob"
     if re.search(r'\b\d{4}[/\-]\d{2}[/\-]\d{2}\b', text):
@@ -45,16 +54,22 @@ def detect_regex(text: str) -> str:
     if re.search(r'\b(DOB|Date of Birth|Birth|YOB)\b', text, re.IGNORECASE):
         return "dob"
         
-    # Name check
+    # 4. Address (Expanded to include typical Indian address components and pincodes)
+    if re.search(r'\b(Address|C/O|S/O|D/O|W/O|Sector|Phase|Gali|Marg|Bhavan|Nagar|Vihar|Khand|DIST)\b', text, re.IGNORECASE):
+        return "address"
+    if re.search(r'\b\d{6}\b', text): # Indian Pincode
+        return "address"
+        
+    # 5. Name check
     if is_indian_name(text):
         return "name"
         
-    # OTP / PIN / Passwords
-    if re.search(r'\b(OTP|One Time Password|Verification Code|Secure Code|Pin Code|PIN|One-Time)\b', text, re.IGNORECASE):
-        return "password"
-    if re.search(r'\b\d{4,6}\b', text):
+    # 6. OTP / Passwords (Strict matching to prevent overriding other fields)
+    if re.search(r'\b(OTP|One Time Password|Verification Code|Secure Code|Pin Code|PIN)\b', text, re.IGNORECASE):
         return "password"
         
+    # 7. Generic PII headers
     if re.search(r'\b(Name|Father|Gender|Male|Female)\b', text, re.IGNORECASE):
         return "pii_text"
+        
     return ""

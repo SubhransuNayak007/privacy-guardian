@@ -106,25 +106,9 @@ export async function pollScanJob(jobId: string, originalFile?: ScanFile): Promi
     return { status: data.status };
   }
 
-  // Create Blob URL for the redacted image
-  const base64Str = data.redactedImageBase64;
-  let safeUrl = originalFile?.previewUrl || ''; 
-  
-  if (base64Str) {
-    try {
-      // Decode base64 (which is returned by python cv2.imencode)
-      const byteString = atob(base64Str);
-      const ab = new ArrayBuffer(byteString.length);
-      const ia = new Uint8Array(ab);
-      for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-      }
-      const blob = new Blob([ab], { type: 'image/jpeg' });
-      safeUrl = URL.createObjectURL(blob);
-    } catch (e) {
-      console.error('Failed to create Blob URL from redactedImageBase64', e);
-    }
-  }
+  // Instead of decoding base64, we directly load the binary image from our new proxy endpoint.
+  // We append a timestamp so the browser bypasses cache if the scan is rerun.
+  const safeUrl = `/api/image/${jobId}?t=${Date.now()}`;
 
   const pipelineStatus: PipelineStatus = {
     face: 'success',

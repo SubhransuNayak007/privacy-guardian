@@ -82,8 +82,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
         privacyScore,
         riskScore: 100 - privacyScore,
         riskLevel: resultObj.riskLevel || 'Low',
-        aiDescription: resultObj.aiDescription || '',
-        redactedImageBase64: resultObj.image || resultObj.redacted_image // python backend returned this
+        aiDescription: resultObj.aiDescription || ''
       });
     } else {
       const errorText = await pythonReq.text();
@@ -91,7 +90,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
       return NextResponse.json({ error: 'Backend rejected the result request', details: errorText }, { status: pythonReq.status });
     }
   } catch (err: any) {
-    console.error('[API/result] Failed to fetch result:', err.message || err);
-    return NextResponse.json({ error: 'Failed to contact AI backend', details: err.message }, { status: 500 });
+    console.warn('[API/result] Failed to fetch result (backend likely busy/timeout):', err.message || err);
+    // If the Python backend is heavily processing (GIL locked by PaddleOCR/YOLO), 
+    // it may drop connections or timeout. Tell the frontend to keep waiting.
+    return NextResponse.json({ status: 'processing', message: 'Backend is busy, continuing to wait...' });
   }
 }
