@@ -151,7 +151,7 @@ const RedactionShape = ({
           ref={shapeRef}
           x={layer.x}
           y={layer.y}
-          radius={layer.radius}
+          radius={Math.abs(layer.radius || 0)}
           rotation={layer.rotation || 0}
           fill={getFill()}
           opacity={1}
@@ -624,7 +624,7 @@ export default function CanvasStage() {
                 <Circle
                   x={newShape.x}
                   y={newShape.y}
-                  radius={newShape.radius}
+                  radius={Math.abs(newShape.radius || 0)}
                   fill="rgba(100, 100, 100, 0.4)"
                   stroke="#1E8449"
                   strokeWidth={2}

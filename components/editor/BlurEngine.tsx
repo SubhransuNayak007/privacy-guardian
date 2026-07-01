@@ -77,7 +77,7 @@ const GaussianStrategy = ({ layer, image }: BlurStrategyProps) => {
         if (layer.type === 'rect') {
           ctx.rect(layer.x, layer.y, layer.width || 0, layer.height || 0);
         } else if (layer.type === 'circle') {
-          ctx.arc(layer.x, layer.y, layer.radius || 0, 0, Math.PI * 2, false);
+          ctx.arc(layer.x, layer.y, Math.abs(layer.radius || 0), 0, Math.PI * 2, false);
         }
         ctx.closePath();
       }}>
@@ -85,15 +85,15 @@ const GaussianStrategy = ({ layer, image }: BlurStrategyProps) => {
           ref={imageRef}
           image={image}
           crop={{
-            x: layer.type === 'circle' ? layer.x - (layer.radius || 0) : layer.x,
-            y: layer.type === 'circle' ? layer.y - (layer.radius || 0) : layer.y,
-            width: layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.width || 0),
-            height: layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.height || 0),
+            x: layer.type === 'circle' ? layer.x - Math.abs(layer.radius || 0) : layer.x,
+            y: layer.type === 'circle' ? layer.y - Math.abs(layer.radius || 0) : layer.y,
+            width: layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.width || 0),
+            height: layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.height || 0),
           }}
-          x={layer.type === 'circle' ? layer.x - (layer.radius || 0) : layer.x}
-          y={layer.type === 'circle' ? layer.y - (layer.radius || 0) : layer.y}
-          width={layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.width || 0)}
-          height={layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.height || 0)}
+          x={layer.type === 'circle' ? layer.x - Math.abs(layer.radius || 0) : layer.x}
+          y={layer.type === 'circle' ? layer.y - Math.abs(layer.radius || 0) : layer.y}
+          width={layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.width || 0)}
+          height={layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.height || 0)}
           filters={[Konva.Filters.Blur]}
           blurRadius={blurRadius}
         />
@@ -138,7 +138,7 @@ const PixelateStrategy = ({ layer, image }: BlurStrategyProps) => {
         if (layer.type === 'rect') {
           ctx.rect(layer.x, layer.y, layer.width || 0, layer.height || 0);
         } else if (layer.type === 'circle') {
-          ctx.arc(layer.x, layer.y, layer.radius || 0, 0, Math.PI * 2, false);
+          ctx.arc(layer.x, layer.y, Math.abs(layer.radius || 0), 0, Math.PI * 2, false);
         }
         ctx.closePath();
       }}>
@@ -146,15 +146,15 @@ const PixelateStrategy = ({ layer, image }: BlurStrategyProps) => {
           ref={imageRef}
           image={image}
           crop={{
-            x: layer.type === 'circle' ? layer.x - (layer.radius || 0) : layer.x,
-            y: layer.type === 'circle' ? layer.y - (layer.radius || 0) : layer.y,
-            width: layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.width || 0),
-            height: layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.height || 0),
+            x: layer.type === 'circle' ? layer.x - Math.abs(layer.radius || 0) : layer.x,
+            y: layer.type === 'circle' ? layer.y - Math.abs(layer.radius || 0) : layer.y,
+            width: layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.width || 0),
+            height: layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.height || 0),
           }}
-          x={layer.type === 'circle' ? layer.x - (layer.radius || 0) : layer.x}
-          y={layer.type === 'circle' ? layer.y - (layer.radius || 0) : layer.y}
-          width={layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.width || 0)}
-          height={layer.type === 'circle' ? (layer.radius || 0) * 2 : (layer.height || 0)}
+          x={layer.type === 'circle' ? layer.x - Math.abs(layer.radius || 0) : layer.x}
+          y={layer.type === 'circle' ? layer.y - Math.abs(layer.radius || 0) : layer.y}
+          width={layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.width || 0)}
+          height={layer.type === 'circle' ? Math.abs(layer.radius || 0) * 2 : (layer.height || 0)}
           filters={[Konva.Filters.Pixelate]}
           pixelSize={pixelSize}
         />
@@ -198,7 +198,7 @@ const SolidColorStrategy = ({ layer, color, image }: { layer: EditorLayer, color
       <Circle
         x={layer.x}
         y={layer.y}
-        radius={layer.radius}
+        radius={Math.abs(layer.radius || 0)}
         rotation={layer.rotation || 0}
         fill={color}
         opacity={layer.opacity}

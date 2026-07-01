@@ -430,7 +430,7 @@ export function UploadScreen({ setScanId }: { setScanId?: (id: string) => void }
             <div className="space-y-2">
               {recentScans.slice(0, 3).map((scan, i) => (
                 <motion.div
-                  key={scan.id}
+                  key={`${scan.id}-${i}`}
                   onClick={() => router.push(`/results/${scan.id}`)}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
