@@ -12,6 +12,7 @@ import { Logo } from '@/components/ui/Logo';
 export function Navbar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
   
   return (
     <motion.nav
@@ -86,11 +87,11 @@ export function Navbar() {
           >
             <div className="px-4 py-4 space-y-4">
               <div className="flex flex-col gap-2">
-                <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/' ? 'text-primary' : 'text-primary-text'}`}>Home</Link>
-                <Link href="/how-it-works" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/how-it-works' ? 'text-primary' : 'text-primary-text'}`}>How it works</Link>
-                <Link href="/security" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/security' ? 'text-primary' : 'text-primary-text'}`}>Security</Link>
-                <Link href="/pricing" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${usePathname() === '/pricing' ? 'text-primary' : 'text-primary-text'}`}>Pricing</Link>
-                <Link href="/support" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 ${usePathname() === '/support' ? 'text-primary' : 'text-primary-text'}`}>Support</Link>
+                <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${pathname === '/' ? 'text-primary' : 'text-primary-text'}`}>Home</Link>
+                <Link href="/how-it-works" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${pathname === '/how-it-works' ? 'text-primary' : 'text-primary-text'}`}>How it works</Link>
+                <Link href="/security" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${pathname === '/security' ? 'text-primary' : 'text-primary-text'}`}>Security</Link>
+                <Link href="/pricing" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 border-b border-border ${pathname === '/pricing' ? 'text-primary' : 'text-primary-text'}`}>Pricing</Link>
+                <Link href="/support" onClick={() => setIsMobileMenuOpen(false)} className={`text-sm font-500 py-2 ${pathname === '/support' ? 'text-primary' : 'text-primary-text'}`}>Support</Link>
               </div>
               
               {/* Mobile CTA */}
