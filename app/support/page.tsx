@@ -45,7 +45,7 @@ export default function SupportPage() {
           </a>
 
           <a
-            href="https://linkedin.com/company/cosmic-crumbs"
+            href="https://www.linkedin.com/in/subhransu-nayak-4b33383a7?utm_source=share_via&utm_content=profile&utm_medium=member_android"
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center justify-center p-8 glass-panel rounded-3xl shadow-sm hover:shadow-md transition-shadow group"
