@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+
 let genAI: GoogleGenerativeAI | null = null;
 function getGenAI(): GoogleGenerativeAI {
   if (!genAI) {
@@ -79,7 +81,7 @@ export async function POST(req: Request) {
           },
         },
         { text: SAFETY_PROMPT },
-      ]);
+      ], { requestOptions: { timeout: 8000 } });
 
       const rawText = result.response.text().trim();
       // Strip markdown fences

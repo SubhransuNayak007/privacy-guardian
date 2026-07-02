@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+
 // Lazy-init Gemini client so missing API key fails at call time, not load time
 let genAI: GoogleGenerativeAI | null = null;
 function getGenAI(): GoogleGenerativeAI {
@@ -77,7 +79,7 @@ Return JSON array validating each item:`;
       const result = await model.generateContent([
         { text: SYSTEM_PROMPT },
         { text: userMessage },
-      ]);
+      ], { requestOptions: { timeout: 8000 } });
 
       const rawText = result.response.text().trim();
       // Strip any markdown code fences if present

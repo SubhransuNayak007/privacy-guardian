@@ -9,7 +9,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ jobId: s
       return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
     }
 
-    const pythonReq = await fetch(`${process.env.PYTHON_API_URL || 'http://127.0.0.1:8000'}/result/${jobId}`, {
+    const isProd = process.env.NODE_ENV === 'production';
+    const defaultApiUrl = isProd ? 'https://sweet-shirts-sneeze.loca.lt' : 'http://127.0.0.1:8000';
+    const apiUrl = process.env.PYTHON_API_URL || defaultApiUrl;
+
+    const pythonReq = await fetch(`${apiUrl}/result/${jobId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

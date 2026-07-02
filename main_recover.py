@@ -125,7 +125,8 @@ def scan_document(req: ScanRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)"""
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+"""
 Privacy Guardian — V3 Production Redaction Engine
 ===================================================
 Pipeline:

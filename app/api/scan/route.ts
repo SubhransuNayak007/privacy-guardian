@@ -14,9 +14,11 @@ export async function POST(req: Request) {
 
     const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
-    console.info(`[API/scan] Submitting job to Python backend at ${process.env.PYTHON_API_URL || 'http://127.0.0.1:8000'}/scan...`);
+    const isProd = process.env.NODE_ENV === 'production';
+    const defaultApiUrl = isProd ? 'https://sweet-shirts-sneeze.loca.lt' : 'http://127.0.0.1:8000';
+    const apiUrl = process.env.PYTHON_API_URL || defaultApiUrl;
     
-    const pythonReq = await fetch(`${process.env.PYTHON_API_URL || 'http://127.0.0.1:8000'}/scan`, {
+    const pythonReq = await fetch(`${apiUrl}/scan`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
