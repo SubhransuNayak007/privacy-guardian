@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 60;
+export const maxDuration = 140;
 
 export async function GET(req: Request, { params }: { params: Promise<{ jobId: string }> }) {
   try {

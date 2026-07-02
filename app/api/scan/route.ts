@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 60;
+export const maxDuration = 140;
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
         imageBase64: `data:image/jpeg;base64,${rawBase64}`,
         trusted_faces_base64: trustedFaceImages,
       }),
-      signal: AbortSignal.timeout(10000) // 10 seconds for submission should be plenty
+      signal: AbortSignal.timeout(140000) // 140 seconds timeout
     });
     
     if (pythonReq.ok) {
