@@ -1,7 +1,7 @@
 # Privacy Guardian V6 — Multi-Model Requirements
 fastapi
 uvicorn[standard]
-paddlepaddle==2.6.0
+paddlepaddle>=2.6.2
 paddleocr>=2.7.0
 # easyocr  # optional Hindi supplement
 ultralytics          # YOLOv8n for persons, weapons, vehicles
